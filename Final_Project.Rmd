@@ -1,0 +1,89 @@
+---
+title: "FML_Final_Project"
+author: "Rajvi Soni"
+date: "2026-04-22"
+output:
+  word_document: default
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, results='hide'}
+Data <- read.csv("WA_Fn-UseC_-HR-Employee-Attrition.csv")
+
+#Understanding the Data
+str(Data)
+summary(Data)
+
+colSums(is.na(Data))
+#Data has no missing or null value.
+```
+
+```{r}
+#Preparing the Data
+
+#Converting the Target Variable (Attrition) from Character(Yes/No) to Factor(1/0)
+Data$Attrition <- ifelse(Data$Attrition == "Yes", 1, 0)
+
+#Removing the unnecessary columns which we are not using for prediction.
+Data$EmployeeCount <- NULL
+Data$Over18 <- NULL
+Data$StandardHours <- NULL
+Data$EmployeeNumber <- NULL
+
+#Converting all character columns to factor.
+Data <- data.frame(lapply(Data, function(x) {
+  if(is.character(x)) as.factor(x) else x
+}))
+
+#Splitting the data into Training (80% of data) and Testing (20% of data) sets so we can check how well the model performs on new unseen data. This will also avoid overfitting.
+library(caret)
+
+set.seed(123)
+
+trainIndex <- createDataPartition(Data$Attrition, p = 0.8, list = FALSE)
+
+train <- Data[trainIndex, ]
+test <- Data[-trainIndex, ]
+```
+
+```{r}
+#Applying Machine Learning Models and Comparing.
+
+#Logistic Regression 
+#This model predicts whether an employee will leave (Attrition = 1) or stay (Attrition = 0)
+
+model_log <- glm(Attrition ~ ., data = train, family = "binomial")
+
+#Prediction
+pred_log <- predict(model_log, test, type = "response")
+
+#Converting probabilities into YES/NO.
+pred_class <- ifelse(pred_log > 0.5, 1, 0) #if probability is > 50%, it predicts that employee will leave.
+
+#Confusion Matrix of Logistic Regression
+confusionMatrix(as.factor(pred_class), as.factor(test$Attrition))
+
+#Random Forest
+#Building Random Forest which usually improves prediction of attrition.
+library(randomForest)
+model_rf <- randomForest(as.factor(Attrition) ~ ., data = train)
+pred_rf <- predict(model_rf, test)
+
+#Confution Matrix of Random Forest
+confusionMatrix(pred_rf, as.factor(test$Attrition))
+
+#Accuracy of Random Forest is 85.71%, where for Logistic Regression is 89.8%, which means Logistic Regression model performs better than Random Forest for our dataset.
+
+#Variable Importance/ Key Drivers
+varImp(model_rf)
+
+#Final Results:
+#The Logistic Regression model performed better than Random Forest, achieving an accuracy of 89.8% in predicting employee attrition. The results show that factors such as overtime, frequent business travel, and long distance from home increase attrition, while job satisfaction and work-life balance help reduce it. Management can use these insights to improve employee retention and reduce turnover.
+
+```
+
